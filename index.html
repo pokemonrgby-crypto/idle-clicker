@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Idle Clicker MVP</title>
+<meta name="description" content="이미지 교체 가능한 방치형 클릭커. 오프라인 저장, 오프라인 수익, 프레스티지, 광고 슬롯." />
+<style>
+  :root{--bg:#0b0f14;--panel:#0f172a;--line:#1e293b;--txt:#e5e7eb;--mut:#94a3b8;--pri:#38bdf8;--ok:#34d399;--warn:#f59e0b}
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;background:linear-gradient(180deg,#0b0f14,#0e1726);color:var(--txt);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  .wrap{max-width:1100px;margin:0 auto;padding:14px}
+  header{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:6px 0}
+  h1{margin:0;font-size:22px}
+  .row{display:grid;grid-template-columns:1.4fr 1fr;gap:12px}
+  @media (max-width:900px){.row{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  .stat{display:flex;flex-wrap:wrap;gap:8px}
+  .pill{border:1px solid var(--line);background:#0b1220;border-radius:999px;padding:4px 10px;font-weight:600}
+  .big{font-size:26px;font-weight:800}
+  .mut{color:var(--mut)}
+  .col{display:grid;gap:12px}
+  .clickArea{display:grid;place-items:center;aspect-ratio:1/1;background:#0a1220;border:1px solid var(--line);border-radius:14px;overflow:hidden;position:relative}
+  #target{max-width:96%;max-height:96%;object-fit:contain;user-select:none;-webkit-user-drag:none;cursor:pointer;transition:transform .08s}
+  #target:active{transform:scale(.96)}
+  .pop{position:absolute;pointer-events:none;font-weight:800}
+  .grid{display:grid;gap:8px}
+  .store item{display:flex}
+  .item{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);background:#0b1220;border-radius:10px;padding:10px}
+  button{background:#0f172a;color:var(--txt);border:1px solid #263244;border-radius:10px;padding:8px 10px;cursor:pointer}
+  button.buy{background:#0ea5e9;color:#06121f;border-color:#0ea5e9;font-weight:800}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .ad{display:grid;place-items:center;height:90px;border:1px dashed #334155;border-radius:12px;color:#93c5fd;background:#0b1220}
+  .flex{display:flex;gap:8px;flex-wrap:wrap}
+  input,select{background:#0f172a;color:#var(--txt);border:1px solid #263244;border-radius:10px;padding:8px 10px}
+  .footer{font-size:12px;color:#7c8aa2}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Idle Clicker MVP</h1>
+      <div class="flex">
+        <span class="pill">로컬 저장</span>
+        <span class="pill">오프라인 수익</span>
+        <span class="pill">광고 슬롯</span>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="stat" style="justify-content:space-between">
+        <div>
+          <div class="big" id="gold">0</div>
+          <div class="mut">초당 수익 <b id="gps">0</b> · 클릭당 <b id="cpc">1</b></div>
+        </div>
+        <div class="flex">
+          <button id="prestige" title="진행을 초기화하고 영구 보너스를 받아요" disabled>프레스티지(+0%)</button>
+          <button id="save">저장</button>
+          <button id="reset">초기화</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="row" style="margin-top:12px">
+      <section class="card col">
+        <div class="clickArea" id="clickArea">
+          <img id="target" alt="target" />
+          <div class="mut" id="empty" style="position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px">이미지 URL을 설정하거나, 기본 도형을 사용할 수 있어요.</div>
+        </div>
+        <div class="flex">
+          <input id="imgUrl" type="text" placeholder="클릭 대상 이미지 URL" style="flex:1" />
+          <button id="applyImg">이미지 적용</button>
+          <button id="useSVG">기본 도형</button>
+        </div>
+        <div class="ad" id="adSlot">광고 슬롯(728×90) — 나중에 애드센스 코드 삽입</div>
+      </section>
+
+      <aside class="col">
+        <section class="card grid">
+          <h3 style="margin:0">업그레이드</h3>
+          <div class="grid" id="store"></div>
+        </section>
+        <section class="card grid">
+          <h3 style="margin:0">설정</h3>
+          <div class="flex">
+            <label>크리티컬<input id="crit" type="checkbox" checked /></label>
+            <label>팝업 표시<input id="pop" type="checkbox" checked /></label>
+          </div>
+          <div class="footer">자동 저장: 20초마다 · 버전 0.1</div>
+        </section>
+      </aside>
+    </div>
+
+    <p class="footer" style="margin-top:10px">© 2025 Idle Clicker MVP — 정적 파일만으로 동작. GitHub Pages 배포 가능.</p>
+  </div>
+
+<script>
+const storeKey = 'idle.mvp.v1';
+const E = id=>document.getElementById(id);
+const S = sel=>document.querySelector(sel);
+const fmt = n => {
+  if (!isFinite(n)) return '∞';
+  if (n < 1e6) return Math.floor(n).toLocaleString();
+  const units = ['','K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc'];
+  let u = 0; let x = n;
+  while (x >= 1000 && u < units.length-1) { x/=1000; u++; }
+  return x.toFixed(2).replace(/\.00$/,'') + units[u];
+};
+
+const game = {
+  gold: 0,
+  cpc: 1,
+  gps: 0,
+  time: Date.now(),
+  prestige: 0, // %
+  imageUrl: '',
+  showPop: true,
+  crit: true,
+  items: [
+    { id:'click1', name:'강화된 클릭', type:'click', lvl:0, base:10,  mult:1.15, delta:1 },
+    { id:'w1',     name:'일꾼',       type:'gen',   lvl:0, base:25,  mult:1.15, dps:0.2 },
+    { id:'w2',     name:'작업장',     type:'gen',   lvl:0, base:120, mult:1.18, dps:1.2 },
+    { id:'w3',     name:'공장',       type:'gen',   lvl:0, base:650, mult:1.2,  dps:6 },
+    { id:'w4',     name:'연구소',     type:'gen',   lvl:0, base:3200, mult:1.22, dps:28 },
+  ]
+};
+
+function save(){ localStorage.setItem(storeKey, JSON.stringify(game)); }
+function load(){ try{ const raw = localStorage.getItem(storeKey); if(raw){ const d=JSON.parse(raw); Object.assign(game,d); } }catch(e){}
+}
+function softReset(){ const {prestige} = game; const img = game.imageUrl; game.gold=0; game.cpc=1; game.gps=0; game.items.forEach(i=>i.lvl=0); game.imageUrl=img; game.time=Date.now(); game.prestige=prestige; save(); draw(); }
+function hardReset(){ localStorage.removeItem(storeKey); location.reload(); }
+
+function recompute(){
+  let gps=0; game.items.forEach(i=>{ if(i.type==='gen') gps += i.lvl * i.dps; });
+  game.gps = gps * (1 + game.prestige/100);
+  let clickBonus = 0; const click = game.items.find(i=>i.id==='click1'); if(click) clickBonus = click.lvl * click.delta;
+  game.cpc = (1 + clickBonus) * (1 + game.prestige/100);
+}
+
+function itemCost(it){ return Math.floor(it.base * Math.pow(it.mult, it.lvl)); }
+
+function buy(id){
+  const it = game.items.find(x=>x.id===id); if(!it) return;
+  const cost = itemCost(it);
+  if(game.gold < cost) return;
+  game.gold -= cost; it.lvl++;
+  recompute(); save(); draw();
+}
+
+function prestigeAvailable(){
+  // 간단 규칙: 현재 골드 기준 문턱치
+  const p = Math.floor(game.gold / 10000); // 1만 금마다 1%
+  return p;
+}
+
+function doPrestige(){
+  const add = prestigeAvailable(); if(add<=0) return;
+  game.prestige += add; softReset();
+}
+
+function addGold(amount){ game.gold += amount; }
+
+function click(e){
+  let amount = game.cpc;
+  // 크리티컬(5% 확률, 10배)
+  if(game.crit && Math.random()<0.05){ amount *= 10; pop(e, `✦ +${fmt(amount)}`); }
+  else if(game.showPop){ pop(e, `+${fmt(amount)}`); }
+  addGold(amount); draw();
+}
+
+function pop(e, txt){
+  if(!game.showPop) return;
+  const host = S('#clickArea');
+  const el = document.createElement('div');
+  el.className='pop'; el.textContent=txt; el.style.left=(e.offsetX||host.clientWidth/2)+'px'; el.style.top=(e.offsetY||host.clientHeight/2)+'px'; el.style.transform='translate(-50%,-50%)';
+  host.appendChild(el);
+  el.animate([{transform:'translate(-50%,-50%) scale(1)',opacity:1},{transform:'translate(-50%,-120%) scale(1.2)',opacity:0}],{duration:700,easing:'cubic-bezier(.2,.8,.2,1)'}).onfinish=()=>el.remove();
+}
+
+function draw(){
+  recompute();
+  E('gold').textContent = fmt(game.gold);
+  E('gps').textContent  = fmt(game.gps);
+  E('cpc').textContent  = fmt(game.cpc);
+  const add = prestigeAvailable();
+  E('prestige').textContent = `프레스티지(+${add}%)`;
+  E('prestige').disabled = add<=0;
+  const box = E('store'); box.innerHTML='';
+  game.items.forEach(it=>{
+    const cost = itemCost(it);
+    const div = document.createElement('div'); div.className='item';
+    const info = it.type==='gen' ? `초당 +${it.dps}` : `클릭당 +${it.delta}`;
+    div.innerHTML = `<div style="font-weight:800">${it.name}</div>
+      <div class="mut">Lv. ${it.lvl} · ${info}</div>
+      <div><button class="buy" ${game.gold>=cost?'':'disabled'} data-id="${it.id}">구매(${fmt(cost)})</button></div>`;
+    box.appendChild(div);
+  });
+}
+
+function tick(){
+  // 10fps 적산
+  const step = 0.1; // 초
+  addGold(game.gps * step);
+  if(Date.now()-lastSave>20000){ save(); lastSave=Date.now(); }
+}
+
+function loop(){ draw(); requestAnimationFrame(loop); }
+
+let lastSave = Date.now();
+
+// 이미지 처리
+function setImage(url){
+  const t = E('target');
+  if(!url){ t.removeAttribute('src'); t.style.display='none'; E('empty').style.display='grid'; return; }
+  t.src = url; t.onload=()=>{ t.style.display='block'; E('empty').style.display='none'; save(); };
+  t.onerror=()=>{ t.style.display='none'; E('empty').style.display='grid'; };
+}
+function useSVG(){
+  const svg = `data:image/svg+xml;utf8,`+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='800' height='800' viewBox='0 0 800 800'>
+    <defs><radialGradient id='g' cx='50%' cy='45%'><stop offset='0%' stop-color='%23a5b4fc'/><stop offset='100%' stop-color='%23223146'/></radialGradient></defs>
+    <rect width='100%' height='100%' fill='%230b1220'/>
+    <g transform='translate(400,400)'>
+      <circle r='180' fill='url(%23g)' stroke='%2333497a' stroke-width='12' />
+      <circle r='120' fill='none' stroke='%235b7bd5' stroke-width='10' stroke-dasharray='20 16'>
+        <animateTransform attributeName='transform' type='rotate' from='0' to='360' dur='12s' repeatCount='indefinite'/>
+      </circle>
+    </g>
+    <text x='50%' y='94%' fill='%23cbd5e1' font-family='system-ui' font-size='36' text-anchor='middle'>CLICK!</text>
+  </svg>`);
+  game.imageUrl = svg; setImage(svg);
+}
+
+// 오프라인 수익
+function grantOffline(){
+  const now = Date.now();
+  const dt = Math.max(0, (now - game.time)/1000); // 초
+  const gain = game.gps * dt;
+  if(gain>0){ game.gold += gain; alert(`오프라인 동안 ${fmt(gain)} 골드를 벌었어! (약 ${Math.floor(dt)}초)`); }
+  game.time = now; save();
+}
+
+// 이벤트 바인딩
+function bind(){
+  E('clickArea').addEventListener('click', (e)=>{
+    if(e.target.id==='target' || e.currentTarget){ click(e); }
+  });
+  E('store').addEventListener('click', (e)=>{
+    const b = e.target.closest('button.buy'); if(!b) return; buy(b.dataset.id);
+  });
+  E('save').onclick = ()=>{ save(); alert('저장했어!'); };
+  E('reset').onclick = ()=>{ if(confirm('정말 초기화할까?')) hardReset(); };
+  E('prestige').onclick = doPrestige;
+  E('applyImg').onclick = ()=>{ const url=E('imgUrl').value.trim(); if(url){ game.imageUrl=url; setImage(url); } };
+  E('useSVG').onclick = useSVG;
+  E('pop').onchange = (e)=>{ game.showPop = e.target.checked; save(); };
+  E('crit').onchange = (e)=>{ game.crit = e.target.checked; save(); };
+}
+
+// 초기화
+load();
+recompute();
+bind();
+if(!game.imageUrl) useSVG(); else setImage(game.imageUrl);
+grantOffline();
+setInterval(tick, 100); // 10fps 적산
+loop();
+window.addEventListener('beforeunload', ()=>{ game.time = Date.now(); save(); });
+</script>
+</body>
+</html>
