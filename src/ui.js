@@ -1,4 +1,4 @@
-import { game, fmt, itemCost, prestigeAvailable, buy, buyMax, save, addGold, recompute, achievementList, doPrestige, hardReset } from './game.js';
+import { game, fmt, itemCost, prestigeAvailable, buy, buyMax, save, addGold, recompute, achievementList, doPrestige, hardReset, equipCost, buyEquip, gainExp, equipmentList, levelExp } from './game.js';
 
 const E = id => document.getElementById(id);
 const S = sel => document.querySelector(sel);
@@ -33,6 +33,23 @@ export function draw(){
       </div>`;
     box.appendChild(div);
   });
+
+  E('pLevel').textContent = game.player.level;
+  E('pHp').textContent = fmt(game.player.hp);
+  E('pAtk').textContent = fmt(game.player.atk);
+  E('pXp').textContent = `${fmt(game.player.xp)}/${fmt(levelExp(game.player.level))}`;
+  const ebox = E('equipStore'); if(ebox){ ebox.innerHTML='';
+    equipmentList.forEach(eq=>{
+      const lvl = game.player.equipment[eq.id]||0;
+      const cost = equipCost(eq);
+      const div = document.createElement('div'); div.className='item';
+      const bonus = `+${eq.bonus} ${eq.stat.toUpperCase()}`;
+      div.innerHTML = `<div style="font-weight:800">${eq.name}</div>`+
+        `<div class="mut">Lv. ${lvl} · ${bonus}</div>`+
+        `<div><button class="equipBuy" ${game.gold>=cost?'':'disabled'} data-id="${eq.id}">구매(${fmt(cost)})</button></div>`;
+      ebox.appendChild(div);
+    });
+  }
 }
 
 export function drawAchievements(){
@@ -54,6 +71,7 @@ export function click(e){
   if(game.crit && Math.random()<0.05){ amount *= 10; pop(e, `✦ +${fmt(amount)}`); }
   else if(game.showPop){ pop(e, `+${fmt(amount)}`); }
   game.totalClicks++;
+  gainExp(1);
   const changed = addGold(amount);
   if(changed) drawAchievements();
   draw();
@@ -108,15 +126,20 @@ export function bind(){
       click(e);
     }
   });
-  E('store').addEventListener('click', (e)=>{
-    const b = e.target.closest('button.buy'); if(!b) return;
-    if(b.dataset.max) buyMax(b.dataset.id); else buy(b.dataset.id);
-    draw();
-  });
-  E('save').onclick = ()=>{ save(); alert('저장했어!'); };
-  E('reset').onclick = ()=>{ if(confirm('정말 초기화할까?')) hardReset(); };
-  E('prestige').onclick = ()=>{ doPrestige(); draw(); };
-  E('daily').onclick = claimDaily;
+    E('store').addEventListener('click', (e)=>{
+      const b = e.target.closest('button.buy'); if(!b) return;
+      if(b.dataset.max) buyMax(b.dataset.id); else buy(b.dataset.id);
+      draw();
+    });
+    E('equipStore').addEventListener('click', (e)=>{
+      const b = e.target.closest('button.equipBuy'); if(!b) return;
+      buyEquip(b.dataset.id);
+      draw();
+    });
+    E('save').onclick = ()=>{ save(); alert('저장했어!'); };
+    E('reset').onclick = ()=>{ if(confirm('정말 초기화할까?')) hardReset(); };
+    E('prestige').onclick = ()=>{ doPrestige(); draw(); };
+    E('daily').onclick = claimDaily;
   E('applyImg').onclick = ()=>{ const url=E('imgUrl').value.trim(); if(url){ game.imageUrl=url; setImage(url); } };
   E('useSVG').onclick = useSVG;
   E('pop').onchange = (e)=>{ game.showPop = e.target.checked; save(); };
