@@ -14,6 +14,7 @@ export const game = {
   crit: true,
   totalClicks: 0,
   totalGold: 0,
+  totalPurchases: 0,
   lastDaily: 0,
   achievements: {},
   items: [
@@ -59,7 +60,8 @@ export function load(){
 
 export function recompute(){
   let gps=0; game.items.forEach(i=>{ if(i.type==='gen') gps += i.lvl * i.dps; });
-  game.gps = gps * (1 + game.prestige/100);
+  const investScale = Math.pow(1 + game.totalPurchases * 0.01, 0.5);
+  game.gps = gps * (1 + game.prestige/100) / investScale;
   let clickBonus = 0; const click = game.items.find(i=>i.id==='click1'); if(click) clickBonus = click.lvl * click.delta;
   const p = game.player;
   let atkBonus=0; let hpBonus=0;
@@ -70,18 +72,20 @@ export function recompute(){
   });
   p.atk = playerDefaults.atk + atkBonus + (p.level-1);
   p.hp  = playerDefaults.hp  + hpBonus + (p.level-1)*5;
-  game.cpc = (1 + clickBonus + p.atk) * (1 + game.prestige/100);
+  game.cpc = (1 + clickBonus + p.atk) * (1 + game.prestige/100) / investScale;
 }
 
 export function itemCost(it){
-  return Math.floor(it.base * Math.pow(it.mult, it.lvl));
+  const base = it.base * Math.pow(it.mult, it.lvl);
+  const inflation = Math.pow(1 + game.totalPurchases * 0.01, game.totalPurchases);
+  return Math.floor(base * inflation);
 }
 
 export function buy(id){
   const it = game.items.find(x=>x.id===id); if(!it) return;
   const cost = itemCost(it);
   if(game.gold < cost) return;
-  game.gold -= cost; it.lvl++;
+  game.gold -= cost; it.lvl++; game.totalPurchases++;
   recompute(); save();
 }
 
@@ -90,7 +94,7 @@ export function buyMax(id){
   let cost = itemCost(it);
   if(game.gold < cost) return;
   while(game.gold >= cost){
-    game.gold -= cost; it.lvl++;
+    game.gold -= cost; it.lvl++; game.totalPurchases++;
     cost = itemCost(it);
   }
   recompute(); save();
