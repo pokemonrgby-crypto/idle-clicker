@@ -1,3 +1,5 @@
+import { notify } from './notify.js';
+
 export const storeKey = 'idle.mvp.v1';
 
 export const game = {
@@ -113,7 +115,7 @@ export function checkAchievements(){
       game.achievements[a.id]=true;
       changed=true;
       if(a.reward){ game.gold += a.reward; game.totalGold += a.reward; }
-      alert(`업적 달성: ${a.name}!`);
+      notify(`업적 달성: ${a.name}!`);
     }
   });
   if(changed) save();
@@ -125,7 +127,10 @@ export function grantOffline(){
   const dt = Math.max(0, (now - game.time)/1000);
   const gain = game.gps * dt;
   let changed = false;
-  if(gain>0){ changed = addGold(gain); alert(`오프라인 동안 ${fmt(gain)} 골드를 벌었어! (약 ${Math.floor(dt)}초)`); }
+  if(gain>0){
+    changed = addGold(gain);
+    notify(`오프라인 동안 ${fmt(gain)} 골드를 벌었어! (약 ${Math.floor(dt)}초)`);
+  }
   game.time = now; save();
   return changed;
 }
