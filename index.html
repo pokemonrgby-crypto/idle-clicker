@@ -180,7 +180,22 @@ function checkAchievements(){
 }
 
 function save(){ localStorage.setItem(storeKey, JSON.stringify(game)); }
-function load(){ try{ const raw = localStorage.getItem(storeKey); if(raw){ const d=JSON.parse(raw); Object.assign(game,d); } }catch(e){}
+function load(){
+  try{
+    const raw = localStorage.getItem(storeKey);
+    if(!raw) return;
+    const d = JSON.parse(raw);
+    ['gold','cpc','gps','time','prestige','imageUrl','showPop','crit','totalClicks','totalGold','lastDaily','heroLevel'].forEach(k=>{
+      if(Object.prototype.hasOwnProperty.call(d,k)) game[k] = d[k];
+    });
+    if(d.achievements) Object.assign(game.achievements, d.achievements);
+    if(Array.isArray(d.items)){
+      d.items.forEach(s=>{
+        const it = game.items.find(i=>i.id===s.id);
+        if(it) Object.assign(it, s);
+      });
+    }
+  }catch(e){}
 }
 function softReset(){ const {prestige} = game; const img = game.imageUrl; game.gold=0; game.cpc=1; game.gps=0; game.items.forEach(i=>i.lvl=0); game.imageUrl=img; game.time=Date.now(); game.prestige=prestige; save(); draw(); }
 function hardReset(){ localStorage.removeItem(storeKey); location.reload(); }
