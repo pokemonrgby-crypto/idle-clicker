@@ -1,4 +1,5 @@
 import { notify } from './notify.js';
+import { playerDefaults, equipmentList, levelExp } from './rpg.js';
 
 export const storeKey = 'idle.mvp.v1';
 
@@ -22,7 +23,8 @@ export const game = {
     { id:'w3',     name:'공장',       type:'gen',   lvl:0, base:650, mult:1.2,  dps:6 },
     { id:'w4',     name:'연구소',     type:'gen',   lvl:0, base:3200, mult:1.22, dps:28 },
     { id:'w5',     name:'메가공장',   type:'gen',   lvl:0, base:20000, mult:1.25, dps:150 },
-  ]
+  ],
+  player: { ...playerDefaults, equipment: {} }
 };
 
 export const achievementList = [
@@ -46,7 +48,12 @@ export function save(){
 export function load(){
   try{
     const raw = localStorage.getItem(storeKey);
-    if(raw){ const d=JSON.parse(raw); Object.assign(game,d); }
+    if(raw){
+      const d=JSON.parse(raw);
+      Object.assign(game, d);
+      game.player = Object.assign({}, playerDefaults, d.player||{});
+      game.player.equipment = Object.assign({}, d.player?.equipment||{});
+    }
   }catch(e){}
 }
 
@@ -54,7 +61,16 @@ export function recompute(){
   let gps=0; game.items.forEach(i=>{ if(i.type==='gen') gps += i.lvl * i.dps; });
   game.gps = gps * (1 + game.prestige/100);
   let clickBonus = 0; const click = game.items.find(i=>i.id==='click1'); if(click) clickBonus = click.lvl * click.delta;
-  game.cpc = (1 + clickBonus) * (1 + game.prestige/100);
+  const p = game.player;
+  let atkBonus=0; let hpBonus=0;
+  equipmentList.forEach(eq=>{
+    const lvl = p.equipment[eq.id]||0;
+    if(eq.stat==='atk') atkBonus += lvl*eq.bonus;
+    if(eq.stat==='hp') hpBonus += lvl*eq.bonus;
+  });
+  p.atk = playerDefaults.atk + atkBonus + (p.level-1);
+  p.hp  = playerDefaults.hp  + hpBonus + (p.level-1)*5;
+  game.cpc = (1 + clickBonus + p.atk) * (1 + game.prestige/100);
 }
 
 export function itemCost(it){
@@ -78,6 +94,29 @@ export function buyMax(id){
     cost = itemCost(it);
   }
   recompute(); save();
+}
+
+export function equipCost(eq){
+  const lvl = game.player.equipment[eq.id] || 0;
+  return Math.floor(eq.base * Math.pow(eq.mult, lvl));
+}
+
+export function buyEquip(id){
+  const eq = equipmentList.find(e=>e.id===id); if(!eq) return;
+  const cost = equipCost(eq);
+  if(game.gold < cost) return;
+  game.gold -= cost;
+  const lvl = game.player.equipment[id] || 0;
+  game.player.equipment[id] = lvl + 1;
+  recompute(); save();
+}
+
+export function gainExp(amount){
+  const p = game.player;
+  p.xp += amount;
+  let need = levelExp(p.level);
+  while(p.xp >= need){
+    p.xp -= need; p.level++; need = levelExp(p.level); }
 }
 
 export function prestigeAvailable(){
@@ -134,3 +173,5 @@ export function grantOffline(){
   game.time = now; save();
   return changed;
 }
+
+export { equipmentList, levelExp };
