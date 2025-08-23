@@ -60,7 +60,7 @@ export function drawAchievements(){
     const div = document.createElement('div');
     div.className = 'item' + (done ? ' done' : '');
     div.innerHTML = `<div style="font-weight:800">${a.name}</div>`+
-      `<div class="mut">${a.desc}</div>`+
+      `<div class="mut">${a.description}</div>`+
       `<div>${done?'✓':''}</div>`;
     box.appendChild(div);
   });

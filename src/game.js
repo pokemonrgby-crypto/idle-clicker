@@ -1,5 +1,6 @@
 import { notify } from './notify.js';
 import { playerDefaults, equipmentList, levelExp } from './rpg.js';
+import achievementsData from './achievements.json' assert { type: 'json' };
 
 export const storeKey = 'idle.mvp.v1';
 
@@ -28,10 +29,10 @@ export const game = {
   player: { ...playerDefaults, equipment: {} }
 };
 
-export const achievementList = [
-  { id:'click100', name:'클릭 100회', desc:'클릭을 100번 해요', cond:g=>g.totalClicks>=100, reward:100 },
-  { id:'gold1000', name:'골드 1천', desc:'누적 골드 1,000', cond:g=>g.totalGold>=1000, reward:200 },
-];
+export const achievementList = achievementsData.map(a => ({
+  ...a,
+  cond: new Function('g', `return ${a.condition}`)
+}));
 
 export function fmt(n){
   if (!isFinite(n)) return '∞';

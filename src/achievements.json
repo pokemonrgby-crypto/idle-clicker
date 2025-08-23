@@ -1,0 +1,16 @@
+[
+  {
+    "id": "click100",
+    "name": "클릭 100회",
+    "description": "클릭을 100번 해요",
+    "condition": "g.totalClicks >= 100",
+    "reward": 100
+  },
+  {
+    "id": "gold1000",
+    "name": "골드 1천",
+    "description": "누적 골드 1,000",
+    "condition": "g.totalGold >= 1000",
+    "reward": 200
+  }
+]
