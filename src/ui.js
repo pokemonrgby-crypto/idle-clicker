@@ -101,6 +101,8 @@ export function claimDaily(){
 }
 
 export function bind(){
+  E('pop').checked = game.showPop;
+  E('crit').checked = game.crit;
   E('clickArea').addEventListener('click', (e)=>{
     if(e.target.id==='target' || e.target.id==='clickArea'){
       click(e);
