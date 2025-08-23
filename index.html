@@ -148,6 +148,17 @@ function buy(id){
   recompute(); save(); draw();
 }
 
+function buyMax(id){
+  const it = game.items.find(x=>x.id===id); if(!it) return;
+  let cost = itemCost(it);
+  if(game.gold < cost) return;
+  while(game.gold >= cost){
+    game.gold -= cost; it.lvl++;
+    cost = itemCost(it);
+  }
+  recompute(); save(); draw();
+}
+
 function prestigeAvailable(){
   // 간단 규칙: 현재 골드 기준 문턱치
   const p = Math.floor(game.gold / 10000); // 1만 금마다 1%
@@ -193,7 +204,10 @@ function draw(){
     const info = it.type==='gen' ? `초당 +${it.dps}` : `클릭당 +${it.delta}`;
     div.innerHTML = `<div style="font-weight:800">${it.name}</div>
       <div class="mut">Lv. ${it.lvl} · ${info}</div>
-      <div><button class="buy" ${game.gold>=cost?'':'disabled'} data-id="${it.id}">구매(${fmt(cost)})</button></div>`;
+      <div style="display:flex;gap:4px">
+        <button class="buy" ${game.gold>=cost?'':'disabled'} data-id="${it.id}">구매(${fmt(cost)})</button>
+        <button class="buy" ${game.gold>=cost?'':'disabled'} data-max="1" data-id="${it.id}">최대</button>
+      </div>`;
     box.appendChild(div);
   });
 }
@@ -248,7 +262,8 @@ function bind(){
     }
   });
   E('store').addEventListener('click', (e)=>{
-    const b = e.target.closest('button.buy'); if(!b) return; buy(b.dataset.id);
+    const b = e.target.closest('button.buy'); if(!b) return;
+    if(b.dataset.max) buyMax(b.dataset.id); else buy(b.dataset.id);
   });
   E('save').onclick = ()=>{ save(); alert('저장했어!'); };
   E('reset').onclick = ()=>{ if(confirm('정말 초기화할까?')) hardReset(); };
