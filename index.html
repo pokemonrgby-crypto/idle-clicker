@@ -25,6 +25,8 @@
   #target:active{transform:scale(.96)}
   .pop{position:absolute;pointer-events:none;font-weight:800}
   .grid{display:grid;gap:8px}
+  #store, #achievements{max-height:300px;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+  @media (max-width:600px){#store, #achievements{max-height:200px}}
   .store item{display:flex}
   .item{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);background:#0b1220;border-radius:10px;padding:10px}
   .item.done{opacity:.6}
