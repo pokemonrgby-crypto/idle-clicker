@@ -15,7 +15,7 @@ function tick(){
   const step = 0.1; // seconds
   const changed = addGold(game.gps * step);
   if(changed) drawAchievements();
-  if(Date.now()-lastSave>20000){ save(); lastSave=Date.now(); }
+  if(Date.now()-lastSave>20000){ game.time = Date.now(); save(); lastSave=Date.now(); }
   checkDaily();
 }
 
