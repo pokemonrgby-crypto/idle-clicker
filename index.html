@@ -27,6 +27,7 @@
   .grid{display:grid;gap:8px}
   .store item{display:flex}
   .item{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);background:#0b1220;border-radius:10px;padding:10px}
+  .item.done{opacity:.6}
   button{background:#0f172a;color:var(--txt);border:1px solid #263244;border-radius:10px;padding:8px 10px;cursor:pointer}
   button.buy{background:#0ea5e9;color:#06121f;border-color:#0ea5e9;font-weight:800}
   button:disabled{opacity:.5;cursor:not-allowed}
@@ -57,6 +58,7 @@
           <button id="prestige" title="진행을 초기화하고 영구 보너스를 받아요" disabled>프레스티지(+0%)</button>
           <button id="save">저장</button>
           <button id="reset">초기화</button>
+          <button id="daily" disabled>일일 보상</button>
         </div>
       </div>
     </section>
@@ -79,6 +81,10 @@
         <section class="card grid">
           <h3 style="margin:0">업그레이드</h3>
           <div class="grid" id="store"></div>
+        </section>
+        <section class="card grid">
+          <h3 style="margin:0">업적</h3>
+          <div class="grid" id="achievements"></div>
         </section>
         <section class="card grid">
           <h3 style="margin:0">설정</h3>
@@ -116,14 +122,51 @@ const game = {
   imageUrl: '',
   showPop: true,
   crit: true,
+  totalClicks: 0,
+  totalGold: 0,
+  lastDaily: 0,
+  achievements: {},
   items: [
     { id:'click1', name:'강화된 클릭', type:'click', lvl:0, base:10,  mult:1.15, delta:1 },
     { id:'w1',     name:'일꾼',       type:'gen',   lvl:0, base:25,  mult:1.15, dps:0.2 },
     { id:'w2',     name:'작업장',     type:'gen',   lvl:0, base:120, mult:1.18, dps:1.2 },
     { id:'w3',     name:'공장',       type:'gen',   lvl:0, base:650, mult:1.2,  dps:6 },
     { id:'w4',     name:'연구소',     type:'gen',   lvl:0, base:3200, mult:1.22, dps:28 },
+    { id:'w5',     name:'메가공장',   type:'gen',   lvl:0, base:20000, mult:1.25, dps:150 },
   ]
 };
+
+const achievementList = [
+  { id:'click100', name:'클릭 100회', desc:'클릭을 100번 해요', cond:g=>g.totalClicks>=100, reward:100 },
+  { id:'gold1000', name:'골드 1천', desc:'누적 골드 1,000', cond:g=>g.totalGold>=1000, reward:200 },
+];
+
+function drawAchievements(){
+  const box = E('achievements'); if(!box) return;
+  box.innerHTML='';
+  achievementList.forEach(a=>{
+    const done = game.achievements[a.id];
+    const div = document.createElement('div');
+    div.className = 'item' + (done ? ' done' : '');
+    div.innerHTML = `<div style="font-weight:800">${a.name}</div>`+
+      `<div class="mut">${a.desc}</div>`+
+      `<div>${done?'✓':''}</div>`;
+    box.appendChild(div);
+  });
+}
+
+function checkAchievements(){
+  let changed=false;
+  achievementList.forEach(a=>{
+    if(!game.achievements[a.id] && a.cond(game)){
+      game.achievements[a.id]=true;
+      changed=true;
+      if(a.reward){ game.gold += a.reward; game.totalGold += a.reward; }
+      alert(`업적 달성: ${a.name}!`);
+    }
+  });
+  if(changed){ save(); drawAchievements(); }
+}
 
 function save(){ localStorage.setItem(storeKey, JSON.stringify(game)); }
 function load(){ try{ const raw = localStorage.getItem(storeKey); if(raw){ const d=JSON.parse(raw); Object.assign(game,d); } }catch(e){}
@@ -170,14 +213,21 @@ function doPrestige(){
   game.prestige += add; softReset();
 }
 
-function addGold(amount){ game.gold += amount; }
+function addGold(amount){
+  game.gold += amount;
+  game.totalGold += amount;
+  checkAchievements();
+}
 
 function click(e){
   let amount = game.cpc;
   // 크리티컬(5% 확률, 10배)
   if(game.crit && Math.random()<0.05){ amount *= 10; pop(e, `✦ +${fmt(amount)}`); }
   else if(game.showPop){ pop(e, `+${fmt(amount)}`); }
-  addGold(amount); draw();
+  game.totalClicks++;
+  addGold(amount);
+  checkAchievements();
+  draw();
 }
 
 function pop(e, txt){
@@ -217,6 +267,7 @@ function tick(){
   const step = 0.1; // 초
   addGold(game.gps * step);
   if(Date.now()-lastSave>20000){ save(); lastSave=Date.now(); }
+  checkDaily();
 }
 
 function loop(){ draw(); requestAnimationFrame(loop); }
@@ -250,8 +301,25 @@ function grantOffline(){
   const now = Date.now();
   const dt = Math.max(0, (now - game.time)/1000); // 초
   const gain = game.gps * dt;
-  if(gain>0){ game.gold += gain; alert(`오프라인 동안 ${fmt(gain)} 골드를 벌었어! (약 ${Math.floor(dt)}초)`); }
+  if(gain>0){ addGold(gain); alert(`오프라인 동안 ${fmt(gain)} 골드를 벌었어! (약 ${Math.floor(dt)}초)`); }
   game.time = now; save();
+}
+
+function checkDaily(){
+  const btn = E('daily'); if(!btn) return;
+  const now = Date.now();
+  btn.disabled = (now - game.lastDaily) < 86400000;
+}
+
+function claimDaily(){
+  const now = Date.now();
+  if((now - game.lastDaily) < 86400000) return;
+  const reward = 500;
+  addGold(reward);
+  alert(`일일 보상으로 ${fmt(reward)} 골드를 받았어!`);
+  game.lastDaily = now;
+  save();
+  checkDaily();
 }
 
 // 이벤트 바인딩
@@ -268,6 +336,7 @@ function bind(){
   E('save').onclick = ()=>{ save(); alert('저장했어!'); };
   E('reset').onclick = ()=>{ if(confirm('정말 초기화할까?')) hardReset(); };
   E('prestige').onclick = doPrestige;
+  E('daily').onclick = claimDaily;
   E('applyImg').onclick = ()=>{ const url=E('imgUrl').value.trim(); if(url){ game.imageUrl=url; setImage(url); } };
   E('useSVG').onclick = useSVG;
   E('pop').onchange = (e)=>{ game.showPop = e.target.checked; save(); };
@@ -278,8 +347,10 @@ function bind(){
 load();
 recompute();
 bind();
+drawAchievements();
 if(!game.imageUrl) useSVG(); else setImage(game.imageUrl);
 grantOffline();
+checkDaily();
 setInterval(tick, 100); // 10fps 적산
 loop();
 window.addEventListener('beforeunload', ()=>{ game.time = Date.now(); save(); });
