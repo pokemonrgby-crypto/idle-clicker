@@ -11,6 +11,16 @@
 - 클릭 타겟 이미지 URL 교체 가능
 - 광고 슬롯(아래 배너 위치)
 
+## 업적 추가 CLI
+`scripts/achievements-cli.js` 스크립트를 이용해 손쉽게 새 업적을 만들 수 있습니다.
+
+```bash
+node scripts/achievements-cli.js
+```
+
+실행 후 id, 이름, 설명, 달성 조건(예: `g.totalClicks >= 100`), 보상 골드를 입력하면
+`src/achievements.json`에 항목이 추가됩니다.
+
 ## 배포 (GitHub Pages, 완전 무료)
 1. 새 레포지토리 생성 (Public) — 예: `idle-clicker`
 2. 이 폴더의 파일을 업로드 (특히 `index.html` 필수)
