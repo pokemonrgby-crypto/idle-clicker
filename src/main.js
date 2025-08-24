@@ -5,7 +5,12 @@ load();
 recompute();
 bind();
 drawAchievements();
-if(!game.imageUrl) useSVG(); else setImage(game.imageUrl);
+if(!game.imageUrl){
+  useSVG();
+  save();
+}else{
+  setImage(game.imageUrl);
+}
 const offlineChanged = grantOffline();
 if(offlineChanged) drawAchievements();
 checkDaily();
