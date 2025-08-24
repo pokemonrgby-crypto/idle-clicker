@@ -96,7 +96,7 @@ export function useSVG(){
     </g>
     <text x='50%' y='94%' fill='%23cbd5e1' font-family='system-ui' font-size='36' text-anchor='middle'>CLICK!</text>
   </svg>`);
-  game.imageUrl = svg; setImage(svg);
+  game.imageUrl = svg; setImage(svg); save();
 }
 
 export function checkDaily(){
